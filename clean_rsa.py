@@ -45,15 +45,12 @@ def clean (df):
     df['Code UF'] = df['Code UF'].astype(int)
     df[cols_to_convert] = df[cols_to_convert].astype(str)
 
-    df["date entrée"] = pd.to_datetime(df["date entrée"],format='%Y-%m-%d')
-    df["date sortie uf"] = pd.to_datetime(df["date sortie uf"],format='%Y-%m-%d')
-
     return df
 
     
 
 #GENERER LES LITS OCCUPES REELEMENT
-def generer_lit(rsa, année):
+def generer_lit(rsa_total, année):
     """
     Génere pour une année la table lit : nombre de lits occupés pour chaque uf pa jour
 
@@ -64,6 +61,13 @@ def generer_lit(rsa, année):
     Returns :
         table lit
     """
+
+    rsa_total["date entrée"] = pd.to_datetime(rsa_total["date entrée"],format='%Y-%m-%d')
+    rsa_total["date sortie uf"] = pd.to_datetime(rsa_total["date sortie uf"],format='%Y-%m-%d')
+
+    rsa= rsa_total[(rsa_total['date entrée'].dt.year == année)
+                    | 
+                    (rsa_total['date sortie uf'].dt.year == année)]
 
     start = f"{année}-01-01"
     end = f"{année}-12-31"
@@ -95,7 +99,7 @@ def is_heb(row):
 
 
 #GENERER LE BESOIN REEL AVEC LA REAFFECTATION DES EM
-def besoin_lit(df_rsa, lit):
+def besoin_lit(rsa_total,année, lit):
 
     
 
@@ -111,7 +115,14 @@ def besoin_lit(df_rsa, lit):
     Returns:
         Table décrite dans la définition
     """
+    rsa_total["date entrée"] = pd.to_datetime(rsa_total["date entrée"],format='%Y-%m-%d')
+    rsa_total["date sortie uf"] = pd.to_datetime(rsa_total["date sortie uf"],format='%Y-%m-%d')
 
+
+    df_rsa= rsa_total[(rsa_total['date entrée'].dt.year == année)
+                    | 
+                    (rsa_total['date sortie uf'].dt.year == année)]
+    
     df_heb = df_rsa[df_rsa.apply(is_heb, axis=1)]
     df_no_heb = df_rsa.drop(df_heb.index)
     
