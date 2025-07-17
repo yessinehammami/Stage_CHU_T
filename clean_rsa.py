@@ -6,6 +6,8 @@ df_matrice=pd.read_excel(r'C:\Stage\data-original\Matrice UF_EM\Matrice UF EM au
 cols_to_convert = ['NumUA', 'NumEM CVG']
 df_matrice[cols_to_convert] = df_matrice[cols_to_convert].astype(str)
 
+
+
 def clean (df):
     """
     Netoyage du fichier RSA et rétention des colonnes qui nous intéressent.
@@ -48,9 +50,29 @@ def clean (df):
     return df
 
     
+def générer_rsa_réel(rsa_total,année):
+    
+    """
+    Génération du rsa d'une année à partir du rsa total de toutes les années disponibles.
+
+    Arg :
+      rsa_total : le fichier rsa résultant du concaténation de tous les rsa séparés
+
+    Returns:
+        nouveau rsa pour l'année concernée
+    """
+
+    rsa_total["date entrée"] = pd.to_datetime(rsa_total["date entrée"],format='%Y-%m-%d')
+    rsa_total["date sortie uf"] = pd.to_datetime(rsa_total["date sortie uf"],format='%Y-%m-%d')
+
+    rsa= rsa_total[(rsa_total['date entrée'].dt.year == année)
+                    | 
+                    (rsa_total['date sortie uf'].dt.year == année)]
+    return rsa
+
 
 #GENERER LES LITS OCCUPES REELEMENT
-def generer_lit(rsa_total, année):
+def generer_lit(rsa, année):
     """
     Génere pour une année la table lit : nombre de lits occupés pour chaque uf pa jour
 
@@ -61,13 +83,6 @@ def generer_lit(rsa_total, année):
     Returns :
         table lit
     """
-
-    rsa_total["date entrée"] = pd.to_datetime(rsa_total["date entrée"],format='%Y-%m-%d')
-    rsa_total["date sortie uf"] = pd.to_datetime(rsa_total["date sortie uf"],format='%Y-%m-%d')
-
-    rsa= rsa_total[(rsa_total['date entrée'].dt.year == année)
-                    | 
-                    (rsa_total['date sortie uf'].dt.year == année)]
 
     start = f"{année}-01-01"
     end = f"{année}-12-31"
@@ -91,15 +106,24 @@ def generer_lit(rsa_total, année):
 
 
 def is_heb(row):
+    """
+    identifier les hébergements.
+
+    Arg :
+      ligne dans un rsa 
+
+    Returns:
+        hebergement ou non 
+    """
     # Get the list of 'NumUA' values for that Equipe médicale
-        valid_ufs = df_matrice.loc[df_matrice['NumEM CVG'] == row['Equipe médicale'], 'NumUA'].tolist()
-        return row['Code UF'] not in valid_ufs
+    valid_ufs = df_matrice.loc[df_matrice['NumEM CVG'] == row['Equipe médicale'], 'NumUA'].tolist()
+    return row['Code UF'] not in valid_ufs
 
 
 
 
 #GENERER LE BESOIN REEL AVEC LA REAFFECTATION DES EM
-def besoin_lit(rsa_total,année, lit):
+def besoin_lit(df_rsa, lit):
 
     
 
@@ -115,13 +139,6 @@ def besoin_lit(rsa_total,année, lit):
     Returns:
         Table décrite dans la définition
     """
-    rsa_total["date entrée"] = pd.to_datetime(rsa_total["date entrée"],format='%Y-%m-%d')
-    rsa_total["date sortie uf"] = pd.to_datetime(rsa_total["date sortie uf"],format='%Y-%m-%d')
-
-
-    df_rsa= rsa_total[(rsa_total['date entrée'].dt.year == année)
-                    | 
-                    (rsa_total['date sortie uf'].dt.year == année)]
     
     df_heb = df_rsa[df_rsa.apply(is_heb, axis=1)]
     df_no_heb = df_rsa.drop(df_heb.index)
@@ -205,3 +222,28 @@ def besoin_lit(rsa_total,année, lit):
 
     return melted_lit
 
+
+def charge_em_um (rsa, année):
+
+    date_range = pd.date_range(start=f"{année}-01-01", end=f"{année}-12-31", freq="D")
+
+    list_uf= rsa['Code UF'].unique().tolist()
+    list_em = rsa['Equipe médicale'].unique().tolist()
+
+    multi_cols = pd.MultiIndex.from_product([list_em, list_uf], names=['Equipe médicale', 'Code UF'])
+
+    dfn = pd.DataFrame(0,index=date_range, columns=multi_cols)
+
+    for em in list_em:
+        for uf in list_uf:
+            df_em_uf = rsa[(rsa['Equipe médicale'] == em) & (rsa['Code UF']==uf)]
+            for index, row in df_em_uf.iterrows():
+                dfn.loc[
+                    (dfn.index >= row['date entrée']) & (dfn.index <= row['date sortie uf']),  # Select date range in index
+                    pd.IndexSlice[em, uf]
+                ] += 1
+
+
+    dfn = dfn.loc[:, (dfn != 0).any(axis=0)]
+
+    return dfn
