@@ -139,8 +139,19 @@ def besoin_lit(df_rsa, lit):
     Returns:
         Table décrite dans la définition
     """
-    
+    columns_to_keep= ['Code UF',
+                    'Equipe médicale',
+                    'GHS (Code)',
+                    'date entrée',
+                    'date sortie uf',
+                    'Type Séjour'
+                    ]
+    df_rsa = df_rsa[columns_to_keep]
+    df_rsa['Code UF']= df_rsa['Code UF'].astype(str)
+    df_rsa['Equipe médicale']= df_rsa['Equipe médicale'].astype(str)
+
     df_heb = df_rsa[df_rsa.apply(is_heb, axis=1)]
+
     df_no_heb = df_rsa.drop(df_heb.index)
     
     # MELT THE lit df
@@ -177,6 +188,7 @@ def besoin_lit(df_rsa, lit):
         else:
             df_heb.at[index, 'possible_UF'] = list([row['Code UF']])
             df_heb.at[index, 'p'] = list([1])
+        print(index)
           
     
     #EFFECTUER LES ESSAIS RANDOMISES SELON LA PROBABILITE CALCULE
