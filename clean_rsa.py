@@ -30,7 +30,7 @@ def clean (df):
     df=df.drop(0).reset_index(drop=True)
 
     df["Date d'entrée"] = pd.to_datetime(df["Date d'entrée"], dayfirst=True)
-    df['date sortie uf'] = df["Date d'entrée"] + pd.to_timedelta(df['Durée de séjour brute'], unit='D')
+    df['date sortie uf'] = df["Date d'entrée"] + pd.to_timedelta(df['Durée de séjour brute']-1, unit='D')
 
     df['Libellé équipe médicale'] = df['Equipe médicale (Code - Libellé)'].str[6:].str[:-61]
     df['Equipe médicale (Code - Libellé)']=df['Equipe médicale (Code - Libellé)'].str[:4]
@@ -40,10 +40,13 @@ def clean (df):
                             "Date d'entrée" : 'date entrée'
                             },
                             inplace=True)
-                                
+
     cols_to_convert = ['Equipe médicale', 'Code UF', 'GHS (Code)']
     df['Code UF'] = df['Code UF'].astype(int)
     df[cols_to_convert] = df[cols_to_convert].astype(str)
+
+    df["date entrée"] = pd.to_datetime(df["date entrée"],format='%Y-%m-%d')
+    df["date sortie uf"] = pd.to_datetime(df["date sortie uf"],format='%Y-%m-%d')
 
     return df
 
